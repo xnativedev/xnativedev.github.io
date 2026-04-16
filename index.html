@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptography Algorithms Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chosen Palette: Slate & Blue (Neutral background with trustworthy blue accents) -->
+    <!-- Application Structure Plan: A Dashboard-style layout with a fixed sidebar navigation. This structure allows users to seamlessly switch between the 7 different cryptographic algorithms without losing context. An "Overview" section introduces the concepts with a Chart.js visualization. Each algorithm has its own dedicated view containing introductory context, visual examples (using CSS grids/flexbox), and step-by-step calculations derived from the source report. This non-linear exploration path is optimal for a reference tool or study guide. -->
+    <!-- Visualization & Content Choices: Overview -> Inform -> Doughnut Chart (Chart.js) -> Shows distribution of Substitution vs Transposition ciphers. Caesar -> Interact -> Interactive Slider (Vanilla JS) -> Allows users to see real-time shifts. Playfair/Route/Columnar -> Organize -> CSS Grids/Tables -> Visually represents the matrix nature of these algorithms without relying on external images or SVG. All choices strictly avoid SVG and Mermaid while maintaining high educational value. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+        .nav-item.active {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-right: 4px solid #2563eb;
+        }
+        .section-content { display: none; }
+        .section-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .crypto-grid-5x5 {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 4px;
+            max-width: 250px;
+            margin: 0 auto;
+        }
+        .crypto-grid-3x3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 4px;
+            max-width: 150px;
+            margin: 0 auto;
+        }
+        .grid-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #1e293b;
+            border-radius: 4px;
+        }
+        .grid-cell.highlight {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+        table { border-collapse: collapse; width: 100%; text-align: center; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.75rem; }
+        th { background-color: #f8fafc; font-weight: 600; color: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden">
+
+    <nav class="w-64 bg-white border-r border-slate-200 flex flex-col h-full z-20 flex-shrink-0 transition-transform duration-300 absolute md:relative -translate-x-full md:translate-x-0" id="sidebar">
+        <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-700 tracking-tight"><i class="fa-solid fa-user-secret mr-2"></i>CryptoLearn</h1>
+            <button id="close-sidebar" class="md:hidden text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1">
+                <li><button class="nav-item active w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="overview"><i class="fa-solid fa-chart-pie w-6 text-center mr-2"></i> ภาพรวม (Overview)</button></li>
+                <li class="px-6 py-2 mt-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Substitution</li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="caesar"><i class="fa-solid fa-arrow-right-arrow-left w-6 text-center mr-2"></i> 1. Caesar Cipher</button></li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="vigenere"><i class="fa-solid fa-repeat w-6 text-center mr-2"></i> 2. Vigenère Cipher</button></li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="vernam"><i class="fa-solid fa-bolt w-6 text-center mr-2"></i> 3. Vernam / XOR</button></li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="playfair"><i class="fa-solid fa-border-all w-6 text-center mr-2"></i> 4. Playfair Cipher</button></li>
+                <li class="px-6 py-2 mt-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Transposition</li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="route"><i class="fa-solid fa-route w-6 text-center mr-2"></i> 5. Route Cipher</button></li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="columnar"><i class="fa-solid fa-table-columns w-6 text-center mr-2"></i> 6. Columnar Trans.</button></li>
+                <li><button class="nav-item w-full text-left px-6 py-3 font-medium text-slate-600 hover:bg-slate-50 transition-colors" data-target="double"><i class="fa-solid fa-layer-group w-6 text-center mr-2"></i> 7. Double Trans.</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="bg-white border-b border-slate-200 p-4 flex items-center shadow-sm z-10">
+            <button id="open-sidebar" class="md:hidden mr-4 text-slate-500 hover:text-blue-600">
+                <i class="fa-solid fa-bars text-2xl"></i>
+            </button>
+            <h2 class="text-xl font-semibold text-slate-800" id="header-title">ภาพรวมอัลกอริทึมเข้ารหัส</h2>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div class="max-w-5xl mx-auto">
+
+                <section id="overview" class="section-content active">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-4">ยินดีต้อนรับสู่ Interactive Cryptography</h3>
+                        <p class="text-slate-600 leading-relaxed mb-6">
+                            แอปพลิเคชันนี้ถูกออกแบบมาเพื่อสรุปและสาธิตวิธีการเข้ารหัส (Encryption) และถอดรหัส (Decryption) ของ 7 อัลกอริทึมคลาสสิกที่สำคัญ เนื้อหาภายในแอปครอบคลุมตั้งแต่การแทนที่ตัวอักษรขั้นพื้นฐาน (Substitution) ไปจนถึงการสลับตำแหน่งที่ซับซ้อน (Transposition) คุณสามารถเลือกสำรวจแต่ละอัลกอริทึมผ่านเมนูด้านซ้าย เพื่อดูตัวอย่างทีละขั้นตอน กฎเกณฑ์ที่ใช้ และโต้ตอบกับข้อมูลเพื่อสร้างความเข้าใจที่ลึกซึ้งยิ่งขึ้น
+                        </p>
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h4 class="text-lg font-semibold text-slate-700 mb-3"><i class="fa-solid fa-layer-group text-blue-500 mr-2"></i> ประเภทของ Cipher</h4>
+                                <ul class="space-y-3">
+                                    <li class="flex items-start">
+                                        <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-600 text-sm font-bold mr-3 mt-0.5">1</span>
+                                        <div>
+                                            <strong class="block text-slate-800">Substitution (การแทนที่)</strong>
+                                            <span class="text-sm text-slate-500">แปลงตัวอักษรหนึ่งเป็นอีกตัวอักษรหนึ่ง (Caesar, Vigenère, Vernam, Playfair)</span>
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-purple-100 text-purple-600 text-sm font-bold mr-3 mt-0.5">2</span>
+                                        <div>
+                                            <strong class="block text-slate-800">Transposition (การสลับตำแหน่ง)</strong>
+                                            <span class="text-sm text-slate-500">คงตัวอักษรเดิมไว้ แต่เปลี่ยนลำดับการเรียง (Route, Columnar, Double)</span>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="typeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="caesar" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">1</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Caesar Cipher</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-8">
+                            Caesar Cipher คืออัลกอริทึมการเข้ารหัสแบบแทนที่ (Substitution) ที่เก่าแก่และเรียบง่ายที่สุด ทำงานโดยการเลื่อนตำแหน่งตัวอักษรในข้อความต้นฉบับ (Plaintext) ไปข้างหน้าหรือถอยหลังตามจำนวนค่าคงที่ที่กำหนดไว้เรียกว่า 'Key' ส่วนนี้จะสาธิตการทำงานผ่านการโต้ตอบด้วยตนเองและตัวอย่างการคำนวณแบบจำลองคณิตศาสตร์ 
+                        </p>
+
+                        <div class="grid md:grid-cols-2 gap-8 mb-8">
+                            <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                                <h4 class="text-lg font-bold text-slate-800 mb-4 text-center">ตัวอย่างจากรายงาน (Key = 3)</h4>
+                                <div class="space-y-4 font-mono text-sm bg-white p-4 rounded-lg border border-slate-200 shadow-inner">
+                                    <div class="flex justify-between items-center text-slate-500 pb-2 border-b border-slate-100">
+                                        <span>Plaintext</span><span>Action</span><span>Ciphertext</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-slate-800 text-lg">C <span class="text-xs text-slate-400 font-normal">(2)</span></span>
+                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">+ 3 = 5</span>
+                                        <span class="font-bold text-blue-600 text-lg">F <span class="text-xs text-blue-400 font-normal">(5)</span></span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-slate-800 text-lg">A <span class="text-xs text-slate-400 font-normal">(0)</span></span>
+                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">+ 3 = 3</span>
+                                        <span class="font-bold text-blue-600 text-lg">D <span class="text-xs text-blue-400 font-normal">(3)</span></span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-slate-800 text-lg">T <span class="text-xs text-slate-400 font-normal">(19)</span></span>
+                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">+ 3 = 22</span>
+                                        <span class="font-bold text-blue-600 text-lg">W <span class="text-xs text-blue-400 font-normal">(22)</span></span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 p-3 bg-blue-50 rounded border border-blue-100 text-sm text-blue-800">
+                                    <strong>ผลลัพธ์:</strong> <span class="font-mono">CAT</span> เข้ารหัสเป็น <span class="font-mono font-bold">FDW</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl p-6 border border-blue-200 shadow-[0_4px_20px_-10px_rgba(59,130,246,0.3)]">
+                                <h4 class="text-lg font-bold text-blue-800 mb-2"><i class="fa-solid fa-flask mr-2"></i>Interactive Simulator</h4>
+                                <p class="text-sm text-slate-500 mb-6">ลองเปลี่ยนค่า Key เพื่อดูผลลัพธ์การเข้ารหัสข้อความแบบเรียลไทม์</p>
+                                
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Plaintext</label>
+                                    <input type="text" id="caesar-plain" value="CAT" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg uppercase" maxlength="15">
+                                </div>
+                                
+                                <div class="mb-6">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-sm font-medium text-slate-700">Key Shift</label>
+                                        <span id="caesar-val" class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-sm">3</span>
+                                    </div>
+                                    <input type="range" id="caesar-shift" min="1" max="25" value="3" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+
+                                <div class="pt-4 border-t border-slate-100">
+                                    <label class="block text-sm font-medium text-slate-500 mb-1">Ciphertext Result</label>
+                                    <div id="caesar-cipher" class="w-full px-4 py-3 bg-slate-800 text-green-400 rounded-md font-mono text-2xl text-center tracking-[0.2em] font-bold">FDW</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 text-sm">
+                            <strong class="text-slate-800 block mb-2">กฎการถอดรหัส (Decryption):</strong>
+                            ใช้สมการ <code class="bg-slate-200 px-1 rounded">P = (C - K)</code> เช่น F(5) - 3 = C(2), D(3) - 3 = A(0), W(22) - 3 = T(19)
+                        </div>
+                    </div>
+                </section>
+
+                <section id="vigenere" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">2</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Vigenère Cipher</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-8">
+                            ต่างจาก Caesar ที่ใช้ตัวเลขเดียว Vigenère Cipher ใช้ "คำ" เป็น Key ในการเข้ารหัส โดยนำตัวอักษรของ Key มาเทียบเป็นตัวเลข แล้วนำไปบวกกับข้อความต้นฉบับทีละตัว หาก Key สั้นกว่าข้อความ จะใช้วิธีนำ Key มาต่อกันแบบวนซ้ำ (Repeating Key) เพื่อให้ครอบคลุมความยาวทั้งหมด ส่วนนี้จำลองกระบวนการยืด Key และการคำนวณทีละตำแหน่ง
+                        </p>
+
+                        <div class="overflow-x-auto mb-8">
+                            <div class="min-w-[500px] bg-slate-800 p-6 rounded-xl text-white font-mono shadow-lg relative overflow-hidden">
+                                <div class="absolute top-0 right-0 p-4 text-slate-600 opacity-20"><i class="fa-solid fa-repeat text-6xl"></i></div>
+                                <h4 class="text-blue-400 text-sm uppercase tracking-wider mb-4 font-sans font-bold">กระบวนการเข้ารหัส: DOG (Key = GO)</h4>
+                                
+                                <div class="flex flex-col space-y-4 relative z-10">
+                                    <div class="flex items-center">
+                                        <div class="w-24 text-slate-400 text-sm">Plaintext:</div>
+                                        <div class="flex space-x-2">
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-slate-700 rounded border border-slate-600">
+                                                <span class="text-lg font-bold">D</span><span class="text-xs text-slate-400">3</span>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-slate-700 rounded border border-slate-600">
+                                                <span class="text-lg font-bold">O</span><span class="text-xs text-slate-400">14</span>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-slate-700 rounded border border-slate-600">
+                                                <span class="text-lg font-bold">G</span><span class="text-xs text-slate-400">6</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center">
+                                        <div class="w-24 text-green-400 text-sm">Key (วนซ้ำ):</div>
+                                        <div class="flex space-x-2">
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-green-900/40 rounded border border-green-800 text-green-300">
+                                                <span class="text-lg font-bold">G</span><span class="text-xs opacity-70">6</span>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-green-900/40 rounded border border-green-800 text-green-300">
+                                                <span class="text-lg font-bold">O</span><span class="text-xs opacity-70">14</span>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-green-900/40 rounded border border-green-800 text-green-300 border-dashed border-2">
+                                                <span class="text-lg font-bold">G</span><span class="text-xs opacity-70">6</span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 text-xs text-slate-400 italic font-sans flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i> วน G กลับมาใช้ใหม่</div>
+                                    </div>
+
+                                    <div class="w-full h-px bg-slate-600 my-2"></div>
+
+                                    <div class="flex items-center">
+                                        <div class="w-24 text-blue-400 text-sm font-bold">Ciphertext:</div>
+                                        <div class="flex space-x-2">
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-blue-900/50 rounded border border-blue-700 text-white relative group">
+                                                <span class="text-xl font-bold">J</span>
+                                                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-xs p-2 rounded hidden group-hover:block whitespace-nowrap z-20">3 + 6 = 9 (J)</div>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-blue-900/50 rounded border border-blue-700 text-white relative group">
+                                                <span class="text-xl font-bold">C</span>
+                                                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-xs p-2 rounded hidden group-hover:block whitespace-nowrap z-20">14 + 14 = 28 -> 2 (C)</div>
+                                            </div>
+                                            <div class="w-12 h-12 flex flex-col items-center justify-center bg-blue-900/50 rounded border border-blue-700 text-white relative group">
+                                                <span class="text-xl font-bold">M</span>
+                                                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-xs p-2 rounded hidden group-hover:block whitespace-nowrap z-20">6 + 6 = 12 (M)</div>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 text-xs text-slate-400 italic font-sans">Hover ที่ผลลัพธ์เพื่อดูวิธีคำนวณ</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-slate-50 p-4 rounded border border-slate-200">
+                                <h5 class="font-bold text-slate-700 mb-2"><i class="fa-solid fa-lock mr-2 text-slate-500"></i>การถอดรหัส (Decryption)</h5>
+                                <ul class="text-sm text-slate-600 space-y-1 font-mono">
+                                    <li>J(9) - G(6) = <span class="font-bold text-blue-600">3 (D)</span></li>
+                                    <li>C(2) - O(14) = -12 -> +26 = <span class="font-bold text-blue-600">14 (O)</span></li>
+                                    <li>M(12) - G(6) = <span class="font-bold text-blue-600">6 (G)</span></li>
+                                </ul>
+                            </div>
+                            <div class="bg-orange-50 p-4 rounded border border-orange-200 text-orange-800 text-sm">
+                                <strong class="block mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> กฎการ Modulo 26:</strong>
+                                หากผลบวกเกิน 25 ให้ <strong>ลบออกด้วย 26</strong> (เช่น 28 - 26 = 2) <br>
+                                หากผลลบติดลบ ให้ <strong>บวกด้วย 26</strong> (เช่น -12 + 26 = 14)
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="vernam" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">3</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Vernam Cipher / XOR</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-6">
+                            Vernam Cipher ในระดับบิต (Binary) อาศัยตัวดำเนินการทางตรรกศาสตร์ที่เรียกว่า <strong>XOR (Exclusive OR)</strong> โดยนำบิตของ Plaintext มาทำ XOR กับบิตของ Key ข้อดีของ XOR คือการคำนวณมีความสมมาตร ใช้ฟังก์ชันเดียวกันทั้งการเข้ารหัสและการถอดรหัส (C ⊕ K = P)
+                        </p>
+
+                        <div class="grid md:grid-cols-2 gap-8 mb-8">
+                            <div>
+                                <h4 class="text-lg font-bold text-slate-700 mb-3">กฎของ XOR Logic</h4>
+                                <div class="grid grid-cols-2 gap-3 text-center">
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                        <span class="block font-mono text-lg font-bold text-slate-800 mb-1">0 ⊕ 0 = <span class="text-blue-600">0</span></span>
+                                        <span class="text-xs text-slate-500">เหมือนกันได้ 0</span>
+                                    </div>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                        <span class="block font-mono text-lg font-bold text-slate-800 mb-1">1 ⊕ 1 = <span class="text-blue-600">0</span></span>
+                                        <span class="text-xs text-slate-500">เหมือนกันได้ 0</span>
+                                    </div>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-[0_0_10px_rgba(59,130,246,0.1)]">
+                                        <span class="block font-mono text-lg font-bold text-slate-800 mb-1">1 ⊕ 0 = <span class="text-blue-600">1</span></span>
+                                        <span class="text-xs text-blue-600 font-medium">ต่างกันได้ 1</span>
+                                    </div>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-[0_0_10px_rgba(59,130,246,0.1)]">
+                                        <span class="block font-mono text-lg font-bold text-slate-800 mb-1">0 ⊕ 1 = <span class="text-blue-600">1</span></span>
+                                        <span class="text-xs text-blue-600 font-medium">ต่างกันได้ 1</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-800 rounded-xl p-6 text-white font-mono shadow-inner">
+                                <h4 class="text-blue-400 text-sm font-sans font-bold uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">คำนวณตามตัวอย่างรายงาน</h4>
+                                <div class="flex flex-col space-y-2 text-lg">
+                                    <div class="flex justify-between w-48">
+                                        <span class="text-slate-400">P:</span>
+                                        <span class="tracking-[0.5em]">0110</span>
+                                    </div>
+                                    <div class="flex justify-between w-48">
+                                        <span class="text-green-400">K:</span>
+                                        <span class="tracking-[0.5em] text-green-300">1011</span>
+                                    </div>
+                                    <div class="w-48 h-px bg-slate-600 my-1"></div>
+                                    <div class="flex justify-between w-48">
+                                        <span class="text-blue-400">C:</span>
+                                        <span class="tracking-[0.5em] font-bold text-white">1101</span>
+                                    </div>
+                                </div>
+                                <p class="text-xs font-sans text-slate-400 mt-6 mt-4 p-2 bg-slate-700 rounded">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> พิสูจน์ถอดรหัส: นำ C(1101) มา XOR กับ K(1011) จะได้ P(0110) เหมือนเดิม
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="playfair" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">4</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Playfair Cipher</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-6">
+                            Playfair ทำงานโดยการเข้ารหัสตัวอักษรเป็นคู่ (Digraphs) ผ่านตารางขนาด 5x5 (โดยปกติจะรวม I และ J ไว้ในช่องเดียวกัน) กฎการเปลี่ยนคู่ตัวอักษรจะขึ้นอยู่กับตำแหน่งของตัวอักษรทั้งสองในตาราง (แถวเดียวกัน, คอลัมน์เดียวกัน, หรือทำมุมสี่เหลี่ยม)
+                        </p>
+
+                        <div class="grid md:grid-cols-12 gap-8 items-start">
+                            <div class="md:col-span-5 bg-slate-50 p-6 rounded-xl border border-slate-200 text-center">
+                                <h4 class="font-bold text-slate-700 mb-4">ตาราง 5x5 Key Grid</h4>
+                                <div class="crypto-grid-5x5 shadow-sm">
+                                    <div class="grid-cell">M</div><div class="grid-cell">O</div><div class="grid-cell">N</div><div class="grid-cell">A</div><div class="grid-cell">R</div>
+                                    <div class="grid-cell highlight">C</div><div class="grid-cell highlight">H</div><div class="grid-cell">Y</div><div class="grid-cell">B</div><div class="grid-cell">D</div>
+                                    <div class="grid-cell highlight">E</div><div class="grid-cell highlight">F</div><div class="grid-cell">G</div><div class="grid-cell">I/J</div><div class="grid-cell">K</div>
+                                    <div class="grid-cell">L</div><div class="grid-cell">P</div><div class="grid-cell">Q</div><div class="grid-cell">S</div><div class="grid-cell">T</div>
+                                    <div class="grid-cell">U</div><div class="grid-cell">V</div><div class="grid-cell">W</div><div class="grid-cell">X</div><div class="grid-cell">Z</div>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-4 text-left">ไฮไลท์ตัวอย่าง: การหาคู่ <span class="font-bold">HE</span> ซึ่งอยู่คนละแถวและคอลัมน์ จะถูกแทนที่ด้วยมุมสี่เหลี่ยมฝั่งตรงข้าม คือ <span class="font-bold">CF</span></p>
+                            </div>
+
+                            <div class="md:col-span-7 space-y-4">
+                                <h4 class="text-lg font-bold text-slate-800">ตัวอย่าง: HELLO</h4>
+                                <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                    <h5 class="text-sm font-semibold text-slate-500 mb-2">ขั้นตอนที่ 1: แบ่งคู่ (Digraphs)</h5>
+                                    <p class="font-mono text-lg tracking-widest text-slate-800 bg-slate-50 p-2 rounded inline-block">
+                                        HE <span class="text-red-500 font-bold">LX</span> LO
+                                    </p>
+                                    <p class="text-sm text-slate-500 mt-1">LL ซ้ำกัน ต้องแทรก X ขั้นกลาง</p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                    <h5 class="text-sm font-semibold text-slate-500 mb-3">ขั้นตอนที่ 2: เข้ารหัสตามกฎ</h5>
+                                    <ul class="space-y-3">
+                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">HE</span>
+                                            <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">CF</span>
+                                            <span class="ml-4 text-sm text-slate-600">(กฎสี่เหลี่ยม มุมตรงข้าม)</span>
+                                        </li>
+                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">LX</span>
+                                            <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">PS</span>
+                                            <span class="ml-4 text-sm text-slate-600">(บรรทัดเดียวกัน เลื่อนขวา)</span>
+                                        </li>
+                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">LO</span>
+                                            <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">UP</span>
+                                            <span class="ml-4 text-sm text-slate-600">(คอลัมน์เดียวกัน เลื่อนลง)</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="p-3 bg-blue-50 rounded border border-blue-100 font-medium text-blue-800 shadow-sm text-center">
+                                    Ciphertext รวม: <span class="font-mono font-bold tracking-widest ml-2 text-xl">CFPSUP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="route" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">5</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Route Cipher</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-8">
+                            เริ่มต้นเข้าสู่หมวด Transposition (การสลับตำแหน่ง) Route Cipher จะนำข้อความมาเขียนเรียงลงในตาราง (กริด) ตามปกติ จากนั้นการเข้ารหัสจะเกิดขึ้นโดยการ "อ่าน" ข้อความออกจากตารางตามเส้นทาง (Route) ที่กำหนดไว้ล่วงหน้า เช่น อ่านเป็นรูปก้นหอย (Spiral)
+                        </p>
+
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-12 bg-slate-50 p-8 rounded-xl border border-slate-200">
+                            
+                            <div class="text-center">
+                                <h4 class="font-bold text-slate-700 mb-2">เขียนลงตาราง</h4>
+                                <p class="text-sm text-slate-500 mb-4 font-mono">ATTACKNOW</p>
+                                <div class="crypto-grid-3x3 mx-auto">
+                                    <div class="grid-cell bg-white">A</div><div class="grid-cell bg-white">T</div><div class="grid-cell bg-white">T</div>
+                                    <div class="grid-cell bg-white">A</div><div class="grid-cell bg-white">C</div><div class="grid-cell bg-white">K</div>
+                                    <div class="grid-cell bg-white">N</div><div class="grid-cell bg-white">O</div><div class="grid-cell bg-white">W</div>
+                                </div>
+                            </div>
+
+                            <div class="text-slate-300 hidden md:block">
+                                <i class="fa-solid fa-arrow-right-long text-4xl"></i>
+                            </div>
+
+                            <div class="text-center">
+                                <h4 class="font-bold text-slate-700 mb-2">อ่านก้นหอย (Spiral)</h4>
+                                <p class="text-sm text-slate-500 mb-4">เส้นทาง: ขอบนอกเข้าสู่แกนกลาง</p>
+                                <div class="relative w-[150px] mx-auto">
+                                    <div class="crypto-grid-3x3 mx-auto relative z-10 opacity-50">
+                                        <div class="grid-cell">A</div><div class="grid-cell">T</div><div class="grid-cell">T</div>
+                                        <div class="grid-cell">A</div><div class="grid-cell">C</div><div class="grid-cell">K</div>
+                                        <div class="grid-cell">N</div><div class="grid-cell">O</div><div class="grid-cell">W</div>
+                                    </div>
+                                    <div class="absolute inset-0 z-20 flex flex-col items-center justify-center text-blue-600 font-bold text-xl drop-shadow-md pointer-events-none">
+                                        <span class="bg-white/80 px-1 rounded absolute top-2 left-2">1</span>
+                                        <span class="bg-white/80 px-1 rounded absolute top-2 left-1/2 -translate-x-1/2">2</span>
+                                        <span class="bg-white/80 px-1 rounded absolute top-2 right-2">3</span>
+                                        <span class="bg-white/80 px-1 rounded absolute top-1/2 right-2 -translate-y-1/2">4</span>
+                                        <span class="bg-white/80 px-1 rounded absolute bottom-2 right-2">5</span>
+                                        <span class="bg-white/80 px-1 rounded absolute bottom-2 left-1/2 -translate-x-1/2">6</span>
+                                        <span class="bg-white/80 px-1 rounded absolute bottom-2 left-2">7</span>
+                                        <span class="bg-white/80 px-1 rounded absolute top-1/2 left-2 -translate-y-1/2">8</span>
+                                        <span class="bg-white/80 px-1 rounded absolute top-1/2 left-1/2 -translate-x-1/2 text-red-500">9</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <p class="text-lg">
+                                ผลลัพธ์ที่ได้เรียงลำดับ: 
+                                <span class="font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded border border-blue-100 tracking-widest inline-block mt-2 md:mt-0 md:ml-2">ATTKWONAC</span>
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="columnar" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">6</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Columnar Transposition</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-6">
+                            ใช้วิธีนำข้อความมาเขียนเรียงเป็นแถวแนวนอนลงใต้คำที่เป็น Key จากนั้นลำดับการอ่านออกเพื่อเข้ารหัส จะถูกกำหนดโดยการเรียงลำดับพยัญชนะของ Key ตามหลักพจนานุกรม (A-Z) ซึ่งสร้างความซับซ้อนให้กับการจัดเรียงใหม่
+                        </p>
+
+                        <div class="bg-slate-800 rounded-xl p-6 text-white overflow-hidden relative shadow-lg">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-[80px] opacity-20"></div>
+                            
+                            <h4 class="text-center font-bold text-lg mb-6 tracking-wide">ตัวอย่าง: STUDYHARD (Key = CAT)</h4>
+                            
+                            <div class="max-w-md mx-auto">
+                                <table class="w-full bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-md font-mono text-center mb-6">
+                                    <thead>
+                                        <tr class="bg-slate-700 text-blue-300">
+                                            <th class="border-slate-600 py-3">C <span class="text-xs bg-blue-800 text-white px-1.5 rounded ml-1">2</span></th>
+                                            <th class="border-slate-600 py-3 bg-slate-600/50">A <span class="text-xs bg-red-500 text-white px-1.5 rounded ml-1">1</span></th>
+                                            <th class="border-slate-600 py-3">T <span class="text-xs bg-blue-800 text-white px-1.5 rounded ml-1">3</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-slate-300 text-lg">
+                                        <tr>
+                                            <td class="border-slate-700">S</td>
+                                            <td class="border-slate-700 bg-slate-800/50 font-bold text-white">T</td>
+                                            <td class="border-slate-700">U</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="border-slate-700">D</td>
+                                            <td class="border-slate-700 bg-slate-800/50 font-bold text-white">Y</td>
+                                            <td class="border-slate-700">H</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="border-slate-700">A</td>
+                                            <td class="border-slate-700 bg-slate-800/50 font-bold text-white">R</td>
+                                            <td class="border-slate-700">D</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600 space-y-2">
+                                    <p class="text-sm text-slate-400">การอ่านออก (ตามลำดับตัวเลข 1, 2, 3):</p>
+                                    <div class="flex items-center text-sm font-mono">
+                                        <span class="bg-red-500/20 text-red-300 px-2 py-1 rounded w-16 text-center border border-red-500/30">Col 1</span>
+                                        <i class="fa-solid fa-arrow-right mx-3 text-slate-500"></i>
+                                        <span class="tracking-[0.3em] font-bold">TYR</span>
+                                    </div>
+                                    <div class="flex items-center text-sm font-mono">
+                                        <span class="bg-blue-500/20 text-blue-300 px-2 py-1 rounded w-16 text-center border border-blue-500/30">Col 2</span>
+                                        <i class="fa-solid fa-arrow-right mx-3 text-slate-500"></i>
+                                        <span class="tracking-[0.3em] font-bold">SDA</span>
+                                    </div>
+                                    <div class="flex items-center text-sm font-mono">
+                                        <span class="bg-blue-500/20 text-blue-300 px-2 py-1 rounded w-16 text-center border border-blue-500/30">Col 3</span>
+                                        <i class="fa-solid fa-arrow-right mx-3 text-slate-500"></i>
+                                        <span class="tracking-[0.3em] font-bold">UHD</span>
+                                    </div>
+                                </div>
+                                <div class="mt-6 text-center">
+                                    <div class="inline-block bg-blue-600 text-white font-mono font-bold text-xl px-6 py-3 rounded-lg shadow-lg tracking-[0.2em]">TYRSDAUHD</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="double" class="section-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8">
+                        <div class="flex items-center mb-4">
+                            <div class="h-10 w-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">7</div>
+                            <h3 class="text-2xl font-bold text-slate-800">Double Transposition</h3>
+                        </div>
+                        <p class="text-slate-600 leading-relaxed mb-6">
+                            เพื่อเพิ่มความปลอดภัยและป้องกันการเดาความยาวของคอลัมน์ Double Transposition จะนำผลลัพธ์จากการทำ Columnar Transposition รอบแรก มาบรรจุลงในตารางใหม่แล้วทำการเข้ารหัสด้วยกระบวนการเดิมซ้ำเป็นรอบที่สอง (เป็นกระบวนการ Diffusion)
+                        </p>
+
+                        <div class="flex flex-col lg:flex-row gap-6 items-center">
+                            <div class="flex-1 bg-slate-50 rounded-xl p-5 border border-slate-200 w-full">
+                                <h4 class="text-center font-bold text-slate-700 mb-3">รอบที่ 1</h4>
+                                <p class="text-xs text-center text-slate-500 mb-2">ข้อมูลเริ่มต้น: STUDYHARD</p>
+                                <table class="w-full text-center font-mono text-sm bg-white mb-3">
+                                    <tr class="bg-slate-200"><th class="py-1">C (2)</th><th class="py-1">A (1)</th><th class="py-1">T (3)</th></tr>
+                                    <tr><td>S</td><td class="bg-blue-50">T</td><td>U</td></tr>
+                                    <tr><td>D</td><td class="bg-blue-50">Y</td><td>H</td></tr>
+                                    <tr><td>A</td><td class="bg-blue-50">R</td><td>D</td></tr>
+                                </table>
+                                <div class="text-center bg-white border border-slate-200 py-2 rounded text-sm font-mono text-blue-600 font-bold">TYRSDAUHD</div>
+                            </div>
+
+                            <div class="flex-shrink-0 text-slate-300 py-4 lg:py-0 transform rotate-90 lg:rotate-0">
+                                <i class="fa-solid fa-arrow-right-long text-3xl"></i>
+                            </div>
+
+                            <div class="flex-1 bg-blue-50 rounded-xl p-5 border border-blue-200 shadow-[0_4px_15px_-5px_rgba(59,130,246,0.2)] w-full">
+                                <h4 class="text-center font-bold text-blue-800 mb-3">รอบที่ 2</h4>
+                                <p class="text-xs text-center text-blue-600 mb-2">นำผลจากรอบแรกมาเรียงใหม่</p>
+                                <table class="w-full text-center font-mono text-sm bg-white mb-3 border-blue-200">
+                                    <tr class="bg-blue-100"><th class="py-1 text-blue-800 border-blue-200">C (2)</th><th class="py-1 text-blue-800 border-blue-200">A (1)</th><th class="py-1 text-blue-800 border-blue-200">T (3)</th></tr>
+                                    <tr><td class="border-blue-100">T</td><td class="bg-blue-100/50 font-bold border-blue-100">Y</td><td class="border-blue-100">R</td></tr>
+                                    <tr><td class="border-blue-100">S</td><td class="bg-blue-100/50 font-bold border-blue-100">D</td><td class="border-blue-100">A</td></tr>
+                                    <tr><td class="border-blue-100">U</td><td class="bg-blue-100/50 font-bold border-blue-100">H</td><td class="border-blue-100">D</td></tr>
+                                </table>
+                                <div class="text-center bg-blue-600 text-white py-2 rounded text-sm font-mono font-bold tracking-widest shadow-md">YDHTSURAD</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const navItems = document.querySelectorAll('.nav-item');
+        const sections = document.querySelectorAll('.section-content');
+        const headerTitle = document.getElementById('header-title');
+        const sidebar = document.getElementById('sidebar');
+        const openSidebarBtn = document.getElementById('open-sidebar');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
+
+        const sectionTitles = {
+            'overview': 'ภาพรวมอัลกอริทึมเข้ารหัส',
+            'caesar': '1. Caesar Cipher',
+            'vigenere': '2. Vigenère Cipher',
+            'vernam': '3. Vernam / XOR',
+            'playfair': '4. Playfair Cipher',
+            'route': '5. Route Cipher',
+            'columnar': '6. Columnar Transposition',
+            'double': '7. Double Transposition'
+        };
+
+        function activateSection(targetId) {
+            navItems.forEach(item => item.classList.remove('active'));
+            document.querySelector(`[data-target="${targetId}"]`).classList.add('active');
+
+            sections.forEach(section => section.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+
+            headerTitle.textContent = sectionTitles[targetId];
+
+            if(window.innerWidth < 768) {
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-target');
+                activateSection(target);
+            });
+        });
+
+        openSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.remove('-translate-x-full');
+        });
+
+        closeSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+        });
+
+        const shiftInput = document.getElementById('caesar-shift');
+        const shiftVal = document.getElementById('caesar-val');
+        const plainInput = document.getElementById('caesar-plain');
+        const cipherOutput = document.getElementById('caesar-cipher');
+
+        function updateCaesar() {
+            const k = parseInt(shiftInput.value);
+            shiftVal.textContent = k;
+            const p = plainInput.value.toUpperCase();
+            let c = '';
+            for(let i=0; i<p.length; i++) {
+                let charCode = p.charCodeAt(i);
+                if(charCode >= 65 && charCode <= 90) {
+                    c += String.fromCharCode(((charCode - 65 + k) % 26) + 65);
+                } else {
+                    c += p[i];
+                }
+            }
+            cipherOutput.textContent = c || '-';
+        }
+
+        shiftInput.addEventListener('input', updateCaesar);
+        plainInput.addEventListener('input', updateCaesar);
+
+        const ctx = document.getElementById('typeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Substitution (แทนที่)', 'Transposition (สลับตำแหน่ง)'],
+                datasets: [{
+                    data: [4, 3],
+                    backgroundColor: ['#3b82f6', '#a855f7'],
+                    hoverBackgroundColor: ['#2563eb', '#9333ea'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: 'Sarabun' } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) { label += ': '; }
+                                label += context.raw + ' อัลกอริทึม';
+                                return label;
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    </script>
+</body>
+</html>
