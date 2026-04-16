@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Chosen Palette: Slate & Blue (Neutral background with trustworthy blue accents) -->
-    <!-- Application Structure Plan: A Dashboard-style layout with a fixed sidebar navigation. This structure allows users to seamlessly switch between the 7 different cryptographic algorithms without losing context. An "Overview" section introduces the concepts with a Chart.js visualization. Each algorithm has its own dedicated view containing introductory context, visual examples (using CSS grids/flexbox), and step-by-step calculations derived from the source report. This non-linear exploration path is optimal for a reference tool or study guide. -->
-    <!-- Visualization & Content Choices: Overview -> Inform -> Doughnut Chart (Chart.js) -> Shows distribution of Substitution vs Transposition ciphers. Caesar -> Interact -> Interactive Slider (Vanilla JS) -> Allows users to see real-time shifts. Playfair/Route/Columnar -> Organize -> CSS Grids/Tables -> Visually represents the matrix nature of these algorithms without relying on external images or SVG. All choices strictly avoid SVG and Mermaid while maintaining high educational value. -->
+    <!-- Application Structure Plan: Dashboard with sidebar navigation for 7 algorithms. Updated with fixed logic for Playfair Cipher (LX -> PZ). -->
+    <!-- Visualization & Content Choices: Fixed Playfair logic, maintained Chart.js for overview, and responsive CSS grids for matrix representations. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 
     <style>
@@ -367,57 +367,61 @@
                             <h3 class="text-2xl font-bold text-slate-800">Playfair Cipher</h3>
                         </div>
                         <p class="text-slate-600 leading-relaxed mb-6">
-                            Playfair ทำงานโดยการเข้ารหัสตัวอักษรเป็นคู่ (Digraphs) ผ่านตารางขนาด 5x5 (โดยปกติจะรวม I และ J ไว้ในช่องเดียวกัน) กฎการเปลี่ยนคู่ตัวอักษรจะขึ้นอยู่กับตำแหน่งของตัวอักษรทั้งสองในตาราง (แถวเดียวกัน, คอลัมน์เดียวกัน, หรือทำมุมสี่เหลี่ยม)
+                            Playfair ทำงานโดยการเข้ารหัสตัวอักษรเป็นคู่ (Digraphs) ผ่านตารางขนาด 5x5 กฎการเปลี่ยนคู่ตัวอักษรจะขึ้นอยู่กับตำแหน่งในตาราง ดังนี้:
                         </p>
 
                         <div class="grid md:grid-cols-12 gap-8 items-start">
                             <div class="md:col-span-5 bg-slate-50 p-6 rounded-xl border border-slate-200 text-center">
-                                <h4 class="font-bold text-slate-700 mb-4">ตาราง 5x5 Key Grid</h4>
+                                <h4 class="font-bold text-slate-700 mb-4">ตาราง 5x5 (Key: MONARCHY)</h4>
                                 <div class="crypto-grid-5x5 shadow-sm">
                                     <div class="grid-cell">M</div><div class="grid-cell">O</div><div class="grid-cell">N</div><div class="grid-cell">A</div><div class="grid-cell">R</div>
-                                    <div class="grid-cell highlight">C</div><div class="grid-cell highlight">H</div><div class="grid-cell">Y</div><div class="grid-cell">B</div><div class="grid-cell">D</div>
-                                    <div class="grid-cell highlight">E</div><div class="grid-cell highlight">F</div><div class="grid-cell">G</div><div class="grid-cell">I/J</div><div class="grid-cell">K</div>
-                                    <div class="grid-cell">L</div><div class="grid-cell">P</div><div class="grid-cell">Q</div><div class="grid-cell">S</div><div class="grid-cell">T</div>
-                                    <div class="grid-cell">U</div><div class="grid-cell">V</div><div class="grid-cell">W</div><div class="grid-cell">X</div><div class="grid-cell">Z</div>
+                                    <div class="grid-cell">C</div><div class="grid-cell">H</div><div class="grid-cell">Y</div><div class="grid-cell">B</div><div class="grid-cell">D</div>
+                                    <div class="grid-cell">E</div><div class="grid-cell">F</div><div class="grid-cell">G</div><div class="grid-cell">I/J</div><div class="grid-cell">K</div>
+                                    <div class="grid-cell highlight">L</div><div class="grid-cell">P</div><div class="grid-cell">Q</div><div class="grid-cell">S</div><div class="grid-cell">T</div>
+                                    <div class="grid-cell">U</div><div class="grid-cell">V</div><div class="grid-cell">W</div><div class="grid-cell highlight">X</div><div class="grid-cell">Z</div>
                                 </div>
-                                <p class="text-xs text-slate-500 mt-4 text-left">ไฮไลท์ตัวอย่าง: การหาคู่ <span class="font-bold">HE</span> ซึ่งอยู่คนละแถวและคอลัมน์ จะถูกแทนที่ด้วยมุมสี่เหลี่ยมฝั่งตรงข้าม คือ <span class="font-bold">CF</span></p>
+                                <div class="mt-4 p-3 bg-white border border-slate-200 rounded text-xs text-left text-slate-600 space-y-1">
+                                    <p>• <strong>สี่เหลี่ยม:</strong> ใช้มุมตรงข้ามในแถวเดียวกัน</p>
+                                    <p>• <strong>แถวเดียวกัน:</strong> เลื่อนขวา 1 ช่อง (วนกลับซ้ายถ้าสุดแถว)</p>
+                                    <p>• <strong>คอลัมน์เดียวกัน:</strong> เลื่อนลง 1 ช่อง (วนกลับบนถ้าสุดหลัก)</p>
+                                </div>
                             </div>
 
                             <div class="md:col-span-7 space-y-4">
-                                <h4 class="text-lg font-bold text-slate-800">ตัวอย่าง: HELLO</h4>
+                                <h4 class="text-lg font-bold text-slate-800">วิเคราะห์เคสตัวอย่าง: HELLO</h4>
                                 <div class="bg-white border border-slate-200 rounded-lg p-4">
                                     <h5 class="text-sm font-semibold text-slate-500 mb-2">ขั้นตอนที่ 1: แบ่งคู่ (Digraphs)</h5>
                                     <p class="font-mono text-lg tracking-widest text-slate-800 bg-slate-50 p-2 rounded inline-block">
-                                        HE <span class="text-red-500 font-bold">LX</span> LO
+                                        HE | <span class="text-red-500 font-bold">LX</span> | LO
                                     </p>
-                                    <p class="text-sm text-slate-500 mt-1">LL ซ้ำกัน ต้องแทรก X ขั้นกลาง</p>
+                                    <p class="text-sm text-slate-500 mt-1 italic">เนื่องจาก LL ซ้ำกัน ต้องแทรก X ขั้นกลาง</p>
                                 </div>
 
                                 <div class="bg-white border border-slate-200 rounded-lg p-4">
                                     <h5 class="text-sm font-semibold text-slate-500 mb-3">ขั้นตอนที่ 2: เข้ารหัสตามกฎ</h5>
                                     <ul class="space-y-3">
-                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors group">
                                             <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">HE</span>
                                             <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
                                             <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">CF</span>
-                                            <span class="ml-4 text-sm text-slate-600">(กฎสี่เหลี่ยม มุมตรงข้าม)</span>
+                                            <span class="ml-4 text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">(คนละแถว/หลัก: มุมสี่เหลี่ยม)</span>
                                         </li>
-                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                        <li class="flex items-center p-2 bg-blue-50/50 rounded transition-colors border-l-4 border-blue-400">
                                             <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">LX</span>
                                             <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
-                                            <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">PS</span>
-                                            <span class="ml-4 text-sm text-slate-600">(บรรทัดเดียวกัน เลื่อนขวา)</span>
+                                            <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-100 rounded">PZ</span>
+                                            <span class="ml-4 text-xs font-semibold text-blue-600 italic">เลื่อนขวา! L -> P และ X -> Z</span>
                                         </li>
-                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors">
+                                        <li class="flex items-center p-2 hover:bg-slate-50 rounded transition-colors group">
                                             <span class="font-mono font-bold text-lg w-12 text-center text-slate-700">LO</span>
                                             <i class="fa-solid fa-arrow-right text-slate-300 mx-3"></i>
                                             <span class="font-mono font-bold text-lg w-12 text-center text-blue-600 bg-blue-50 rounded">UP</span>
-                                            <span class="ml-4 text-sm text-slate-600">(คอลัมน์เดียวกัน เลื่อนลง)</span>
+                                            <span class="ml-4 text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">(คอลัมน์เดียวกัน: เลื่อนลง)</span>
                                         </li>
                                     </ul>
                                 </div>
-                                <div class="p-3 bg-blue-50 rounded border border-blue-100 font-medium text-blue-800 shadow-sm text-center">
-                                    Ciphertext รวม: <span class="font-mono font-bold tracking-widest ml-2 text-xl">CFPSUP</span>
+                                <div class="p-3 bg-blue-600 rounded-lg border border-blue-700 font-medium text-white shadow-md text-center">
+                                    Ciphertext รวม: <span class="font-mono font-bold tracking-widest ml-2 text-xl">CFPZUP</span>
                                 </div>
                             </div>
                         </div>
